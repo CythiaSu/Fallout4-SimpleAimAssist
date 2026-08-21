@@ -1,0 +1,14 @@
+{
+  "modName": "SimpleAimAssist",
+  "keybinds": [
+    {
+      "id": "SAA_TargetLockHotkey",
+      "desc": "锁定或取消当前目标",
+      "action": {
+        "type": "CallGlobalFunction",
+        "script": "SimpleAimAssist",
+        "function": "OnMcmTargetLockHotkey"
+      }
+    }
+  ]
+}

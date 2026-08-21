@@ -1,0 +1,496 @@
+{
+  "modName": "SimpleAimAssist",
+  "displayName": "简单辅助瞄准",
+  "minMcmVersion": 1,
+  "content": [
+    {
+      "type": "section",
+      "text": "状态"
+    },
+    {
+      "type": "text",
+      "text": "辅助瞄准跟随游戏实际瞄准状态；近战使用实际格挡状态。"
+    }
+  ],
+  "pages": [
+    {
+      "pageDisplayName": "基础设置",
+      "content": [
+        {
+          "type": "section",
+          "text": "辅助瞄准"
+        },
+        {
+          "id": "bEnabled:Main",
+          "type": "switcher",
+          "text": "启用辅助瞄准",
+          "help": "枪械进入实际瞄准状态、近战进入实际格挡状态时，辅助瞄准会生效。",
+          "valueOptions": {
+            "sourceType": "ModSettingBool",
+            "default": true
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetEnabled",
+            "params": [
+              "{b}{value}"
+            ]
+          }
+        },
+        {
+          "id": "iInputMode:Main",
+          "type": "dropdown",
+          "text": "输入设备",
+          "help": "手柄模式使用独立的搜索范围和跟踪参数。",
+          "valueOptions": {
+            "sourceType": "ModSettingInt",
+            "default": 1,
+            "options": [
+              "键盘 / 鼠标",
+              "手柄"
+            ]
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetInputMode",
+            "params": [
+              "{i}{value}"
+            ]
+          }
+        },
+        {
+          "id": "fAssistStrengthScale:Main",
+          "type": "slider",
+          "text": "吸附强度",
+          "help": "控制准星靠近并跟随锁定目标的速度。范围为 0.1-1.0。",
+          "valueOptions": {
+            "sourceType": "ModSettingFloat",
+            "default": 0.5,
+            "min": 0.1,
+            "max": 1.0,
+            "step": 0.05
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetAssistStrengthScale",
+            "params": [
+              "{f}{value}"
+            ]
+          }
+        },
+        {
+          "id": "bAllowHighZoom:Main",
+          "type": "switcher",
+          "text": "高倍镜也启用辅助瞄准",
+          "help": "开启后不再因为画面放大而跳过辅助瞄准。高倍镜下锁定范围和命中部位仍由游戏画面决定。",
+          "valueOptions": {
+            "sourceType": "ModSettingBool",
+            "default": false
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetAllowHighZoom",
+            "params": [
+              "{b}{value}"
+            ]
+          }
+        },
+        {
+          "id": "iManualAimReturnDelay:Main",
+          "type": "dropdown",
+          "text": "回锚点等待",
+          "help": "停止移动准星后，等待一段时间再回到默认锚点。",
+          "valueOptions": {
+            "sourceType": "ModSettingInt",
+            "default": 1,
+            "options": [
+              "不等待",
+              "短等待（180毫秒）",
+              "长等待（350毫秒）"
+            ]
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetManualAimReturnDelay",
+            "params": [
+              "{i}{value}"
+            ]
+          }
+        },
+        {
+          "type": "section",
+          "text": "目标标记"
+        },
+        {
+          "id": "bEnableTargetMarker:Main",
+          "type": "switcher",
+          "text": "显示目标标记",
+          "help": "锁定目标时，在目标头顶显示独立标记。",
+          "valueOptions": {
+            "sourceType": "ModSettingBool",
+            "default": true
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetTargetMarkerEnabled",
+            "params": [
+              "{b}{value}"
+            ]
+          }
+        },
+        {
+          "id": "iTargetMarkerStyle:Main",
+          "type": "dropdown",
+          "text": "标记款式",
+          "help": "选择锁定目标头顶显示的标记样式。",
+          "valueOptions": {
+            "sourceType": "ModSettingInt",
+            "default": 5,
+            "options": [
+              "红三角",
+              "纯白",
+              "白红",
+              "红翼",
+              "青双V",
+              "威胁骷髅"
+            ]
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetTargetMarkerStyle",
+            "params": [
+              "{i}{value}"
+            ]
+          }
+        },
+        {
+          "type": "section",
+          "text": "锁定行为"
+        },
+        {
+          "id": "bNoFireTimeoutAffectsIndependentLock:Main",
+          "type": "switcher",
+          "text": "独立锁定受无操作退出影响",
+          "help": "开启后，独立锁定也会在无开枪或无准星操作达到上方时间后退出。默认关闭，适合近战接近目标。",
+          "valueOptions": {
+            "sourceType": "ModSettingBool",
+            "default": false
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetNoFireTimeoutAffectsIndependentLock",
+            "params": [
+              "{b}{value}"
+            ]
+          }
+        },
+        {
+          "type": "text",
+          "text": "说明：独立开关模式受此开关影响，默认关闭。"
+        },
+        {
+          "id": "bAllowOutOfCombatHostileTargets:Main",
+          "type": "switcher",
+          "text": "允许锁定未进入战斗的敌人",
+          "help": "实验功能。开启后，只要目标仍对玩家敌对，即使尚未进入战斗也可以锁定。敌对关系、距离、视线和准星范围限制仍然有效。",
+          "valueOptions": {
+            "sourceType": "ModSettingBool",
+            "default": false
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetAllowOutOfCombatHostileTargets",
+            "params": [
+              "{b}{value}"
+            ]
+          }
+        },
+        {
+          "type": "text",
+          "text": "说明：实验功能，尚未充分验证。普通瞄准和独立锁定都会受此开关影响。"
+        }
+      ]
+    },
+    {
+      "pageDisplayName": "独立锁定",
+      "content": [
+        {
+          "type": "section",
+          "text": "功能设置"
+        },
+        {
+          "id": "bToggleAimMode:Main",
+          "type": "switcher",
+          "text": "启用独立锁定功能",
+          "help": "默认关闭。开启后，短按右摇杆锁定或取消目标，长按执行下方选择的固定动作。关闭后右摇杆恢复游戏原本的行为。",
+          "valueOptions": {
+            "sourceType": "ModSettingBool",
+            "default": false
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetToggleAimMode",
+            "params": [
+              "{b}{value}"
+            ]
+          }
+        },
+        {
+          "id": "iGamepadLongPressAction:Main",
+          "type": "dropdown",
+          "text": "长按右摇杆动作",
+          "help": "独立锁定开启时，长按右摇杆将执行这里选择的固定动作；可以选择潜行或切换第一/第三人称。",
+          "valueOptions": {
+            "sourceType": "ModSettingInt",
+            "default": 0,
+            "options": [
+              "潜行",
+              "切换第一/第三人称"
+            ]
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetGamepadLongPressAction",
+            "params": [
+              "{i}{value}"
+            ]
+          }
+        },
+        {
+          "id": "SAA_TargetLockHotkey",
+          "type": "hotkey",
+          "text": "锁定目标按键",
+          "help": "没有默认按键。请在这里绑定一个自定义按键，避免占用游戏原版的鼠标中键切换视角。",
+          "valueOptions": {
+            "allowModifierKeys": true
+          }
+        },
+        {
+          "type": "section",
+          "text": "操作说明"
+        },
+        {
+          "type": "text",
+          "text": "手柄操作：短按右摇杆锁定或取消目标；长按超过 0.25 秒执行上方选择的固定动作。"
+        },
+        {
+          "type": "text",
+          "text": "键鼠操作：需要在上方设置自定义锁定按键；未设置时不会占用鼠标中键。"
+        },
+        {
+          "type": "text",
+          "text": "锁定效果：无需保持瞄准或格挡。远程准星持续跟随目标，近战持续面朝目标。"
+        },
+        {
+          "type": "text",
+          "text": "结束条件：目标失效后只重新搜索一次；找不到其他敌人便结束，需要再次按键。"
+        },
+        {
+          "type": "section",
+          "text": "兼容说明"
+        },
+        {
+          "type": "text",
+          "text": "关闭独立锁定后，右摇杆恢复游戏原本的行为；开启后，右摇杆短按锁定或取消，长按执行所选固定动作。普通瞄准与格挡辅助不受影响，独立锁定可与 Toggle Aim 类模组同时使用。"
+        }
+      ]
+    },
+    {
+      "pageDisplayName": "锁定参数",
+      "content": [
+        {
+          "type": "section",
+          "text": "瞄准锚点"
+        },
+        {
+          "id": "iAimAnchor:Main",
+          "type": "dropdown",
+          "text": "默认锁定部位",
+          "help": "选择辅助瞄准默认跟随的部位。特殊生物缺少对应节点时会自动回退到身体。",
+          "valueOptions": {
+            "sourceType": "ModSettingInt",
+            "default": 0,
+            "options": [
+              "身体",
+              "头部",
+              "下半身"
+            ]
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetAimAnchor",
+            "params": [
+              "{i}{value}"
+            ]
+          }
+        },
+        {
+          "type": "section",
+          "text": "武器距离"
+        },
+        {
+          "id": "fMeleeLockDistance:Main",
+          "type": "slider",
+          "text": "近战锁定距离",
+          "help": "近战武器不受最低距离限制，并使用独立的最大锁定距离。默认值为 900。",
+          "valueOptions": {
+            "sourceType": "ModSettingFloat",
+            "default": 900.0,
+            "min": 100.0,
+            "max": 3000.0,
+            "step": 50.0
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetMeleeLockDistance",
+            "params": [
+              "{f}{value}"
+            ]
+          }
+        },
+        {
+          "id": "fRangedLockDistance:Main",
+          "type": "slider",
+          "text": "远程锁定距离",
+          "help": "枪械、弓、投掷物等远程武器使用的最大锁定距离。默认值保持当前远程行为。",
+          "valueOptions": {
+            "sourceType": "ModSettingFloat",
+            "default": 2400.0,
+            "min": 500.0,
+            "max": 10000.0,
+            "step": 250.0
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetRangedLockDistance",
+            "params": [
+              "{f}{value}"
+            ]
+          }
+        },
+        {
+          "type": "section",
+          "text": "目标选择"
+        },
+        {
+          "id": "iTargetSwitchLevel:Main",
+          "type": "dropdown",
+          "text": "切换目标力度",
+          "help": "锁定时大幅移动右摇杆或拖动鼠标，可以切换到准星附近的其他敌人。",
+          "valueOptions": {
+            "sourceType": "ModSettingInt",
+            "default": 2,
+            "options": [
+              "关闭",
+              "大幅移动",
+              "中等移动",
+              "小幅移动",
+              "很小幅移动"
+            ]
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetTargetSwitchLevel",
+            "params": [
+              "{i}{value}"
+            ]
+          }
+        },
+        {
+          "id": "fSearchConeDegrees:Main",
+          "type": "slider",
+          "text": "吸附范围",
+          "help": "控制敌人需要多靠近准星才会被初次锁定。数值越低越精确。",
+          "valueOptions": {
+            "sourceType": "ModSettingFloat",
+            "default": 14.0,
+            "min": 3.0,
+            "max": 24.0,
+            "step": 1.0
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetSearchConeDegrees",
+            "params": [
+              "{f}{value}"
+            ]
+          }
+        },
+        {
+          "id": "fNoFireTimeoutSeconds:Main",
+          "type": "slider",
+          "text": "无操作自动退出时间",
+          "help": "锁定后没有开枪或移动准星时，经过指定时间自动退出。默认关闭，设为 0 可关闭。独立锁定是否受影响请在基础设置的锁定行为中单独设置。",
+          "valueOptions": {
+            "sourceType": "ModSettingFloat",
+            "default": 0.0,
+            "min": 0.0,
+            "max": 15.0,
+            "step": 0.5
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetNoFireTimeoutSeconds",
+            "params": [
+              "{f}{value}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "pageDisplayName": "使用说明",
+      "content": [
+        {
+          "type": "section",
+          "text": "普通辅助瞄准"
+        },
+        {
+          "type": "text",
+          "text": "远程在瞄准时生效，近战在格挡时生效；状态结束后立即停止。"
+        },
+        {
+          "type": "section",
+          "text": "独立锁定"
+        },
+        {
+          "type": "text",
+          "text": "按独立按键索敌。锁定后无需保持瞄准或格挡；远程准星持续跟随目标，近战持续面朝目标。"
+        },
+        {
+          "type": "section",
+          "text": "目标与标记"
+        },
+        {
+          "type": "text",
+          "text": "目标失效后只重新搜索一次，找不到便结束。标记始终位于目标头顶；瞄准锚点可在“锁定参数”中选择。"
+        },
+        {
+          "type": "section",
+          "text": "兼容与限制"
+        },
+        {
+          "type": "text",
+          "text": "普通辅助读取游戏实际状态，可配合 Toggle Aim。高倍镜限制可在“基础设置”中关闭。"
+        }
+      ]
+    }
+  ]
+}

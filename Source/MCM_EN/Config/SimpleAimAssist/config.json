@@ -1,0 +1,448 @@
+{
+  "modName": "SimpleAimAssist",
+  "displayName": "Simple Aim Assist",
+  "minMcmVersion": 1,
+  "content": [
+    {
+      "type": "section",
+      "text": "Status"
+    },
+    {
+      "type": "text",
+      "text": "Aim assist follows the game's actual aiming state; melee weapons use the actual blocking state."
+    }
+  ],
+  "pages": [
+    {
+      "pageDisplayName": "Basic Settings",
+      "content": [
+        {
+          "type": "section",
+          "text": "Aim Assist"
+        },
+        {
+          "id": "bEnabled:Main",
+          "type": "switcher",
+          "text": "Enable Aim Assist",
+          "help": "Aim assist activates when a ranged weapon enters the actual aiming state or a melee weapon enters the actual blocking state.",
+          "valueOptions": {
+            "sourceType": "ModSettingBool",
+            "default": true
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetEnabled",
+            "params": [
+              "{b}{value}"
+            ]
+          }
+        },
+        {
+          "id": "iInputMode:Main",
+          "type": "dropdown",
+          "text": "Input Device",
+          "help": "Gamepad mode uses its own acquisition and tracking parameters.",
+          "valueOptions": {
+            "sourceType": "ModSettingInt",
+            "default": 1,
+            "options": [
+              "Keyboard / Mouse",
+              "Gamepad"
+            ]
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetInputMode",
+            "params": [
+              "{i}{value}"
+            ]
+          }
+        },
+        {
+          "id": "fAssistStrengthScale:Main",
+          "type": "slider",
+          "text": "Assist Strength",
+          "help": "Controls how quickly the crosshair moves toward and follows the locked target. Range: 0.1-1.0.",
+          "valueOptions": {
+            "sourceType": "ModSettingFloat",
+            "default": 0.5,
+            "min": 0.1,
+            "max": 1,
+            "step": 0.05
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetAssistStrengthScale",
+            "params": [
+              "{f}{value}"
+            ]
+          }
+        },
+        {
+          "id": "bAllowHighZoom:Main",
+          "type": "switcher",
+          "text": "Enable Aim Assist with High-Zoom Scopes",
+          "help": "When enabled, screen magnification no longer disables aim assist. Acquisition and hit location still depend on what is visible through the scope.",
+          "valueOptions": {
+            "sourceType": "ModSettingBool",
+            "default": false
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetAllowHighZoom",
+            "params": [
+              "{b}{value}"
+            ]
+          }
+        },
+        {
+          "id": "iManualAimReturnDelay:Main",
+          "type": "dropdown",
+          "text": "Anchor Return Delay",
+          "help": "After manual crosshair movement stops, wait before returning to the default anchor.",
+          "valueOptions": {
+            "sourceType": "ModSettingInt",
+            "default": 1,
+            "options": [
+              "No Delay",
+              "Short (180 ms)",
+              "Long (350 ms)"
+            ]
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetManualAimReturnDelay",
+            "params": [
+              "{i}{value}"
+            ]
+          }
+        },
+        {
+          "type": "section",
+          "text": "Target Marker"
+        },
+        {
+          "id": "bEnableTargetMarker:Main",
+          "type": "switcher",
+          "text": "Show Target Marker",
+          "help": "Shows a separate marker above the locked target.",
+          "valueOptions": {
+            "sourceType": "ModSettingBool",
+            "default": true
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetTargetMarkerEnabled",
+            "params": [
+              "{b}{value}"
+            ]
+          }
+        },
+        {
+          "id": "iTargetMarkerStyle:Main",
+          "type": "dropdown",
+          "text": "Marker Style",
+          "help": "Selects the marker shown above the locked target.",
+          "valueOptions": {
+            "sourceType": "ModSettingInt",
+            "default": 5,
+            "options": [
+              "Red Triangle",
+              "Simple White",
+              "White / Red",
+              "Red Wings",
+              "Cyan Double V",
+              "Threat Skull"
+            ]
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetTargetMarkerStyle",
+            "params": [
+              "{i}{value}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "pageDisplayName": "Independent Lock",
+      "content": [
+        {
+          "type": "section",
+          "text": "Settings"
+        },
+        {
+          "id": "bToggleAimMode:Main",
+          "type": "switcher",
+          "text": "Enable Independent Target Lock",
+          "help": "Disabled by default. When enabled, short-click the right stick to lock or cancel; hold it to perform the fixed action selected below. When disabled, the right stick keeps its normal game behavior.",
+          "valueOptions": {
+            "sourceType": "ModSettingBool",
+            "default": false
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetToggleAimMode",
+            "params": [
+              "{b}{value}"
+            ]
+          }
+        },
+        {
+          "id": "iGamepadLongPressAction:Main",
+          "type": "dropdown",
+          "text": "Long Press Action",
+          "help": "When Independent Lock is enabled, holding the right stick performs the fixed action selected here: Sneak or Toggle 1st/3rd Person.",
+          "valueOptions": {
+            "sourceType": "ModSettingInt",
+            "default": 0,
+            "options": [
+              "Sneak",
+              "Toggle 1st/3rd Person"
+            ]
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetGamepadLongPressAction",
+            "params": [
+              "{i}{value}"
+            ]
+          }
+        },
+        {
+          "id": "SAA_TargetLockHotkey",
+          "type": "hotkey",
+          "text": "Target Lock Key",
+          "help": "Uses the middle mouse button by default. Binding a key here replaces the default button.",
+          "valueOptions": {
+            "allowModifierKeys": true
+          }
+        },
+        {
+          "type": "section",
+          "text": "Controls"
+        },
+        {
+          "type": "text",
+          "text": "Gamepad: short-click the right stick to lock or cancel; hold it for more than 0.25 seconds to perform the selected fixed action."
+        },
+        {
+          "type": "text",
+          "text": "Keyboard and mouse: middle mouse is the default; assigning a custom key disables the middle mouse binding."
+        },
+        {
+          "type": "text",
+          "text": "Lock behavior: aiming or blocking is no longer required. Ranged crosshair tracking stays active, while melee keeps facing the target."
+        },
+        {
+          "type": "text",
+          "text": "End condition: if the target becomes invalid, the mod searches once. If no replacement is found, lock ends and requires another button press."
+        },
+        {
+          "type": "section",
+          "text": "Compatibility"
+        },
+        {
+          "type": "text",
+          "text": "When Independent Lock is disabled, the right stick keeps its normal game behavior. When enabled, short-click locks or cancels and long-press performs the selected fixed action. Normal aim and block assist remain available, and Independent Lock works with Toggle Aim mods."
+        }
+      ]
+    },
+    {
+      "pageDisplayName": "Lock-On Settings",
+      "content": [
+        {
+          "type": "section",
+          "text": "Aim Anchor"
+        },
+        {
+          "id": "iAimAnchor:Main",
+          "type": "dropdown",
+          "text": "Default Aim Anchor",
+          "help": "Selects the body region followed by default. If a creature lacks the required node, the mod falls back to the body.",
+          "valueOptions": {
+            "sourceType": "ModSettingInt",
+            "default": 0,
+            "options": [
+              "Body",
+              "Head",
+              "Lower Body"
+            ]
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetAimAnchor",
+            "params": [
+              "{i}{value}"
+            ]
+          }
+        },
+        {
+          "type": "section",
+          "text": "Weapon Distances"
+        },
+        {
+          "id": "fMeleeLockDistance:Main",
+          "type": "slider",
+          "text": "Melee Lock Distance",
+          "help": "Melee weapons have no minimum distance and use a separate maximum lock distance. Default: 900.",
+          "valueOptions": {
+            "sourceType": "ModSettingFloat",
+            "default": 900,
+            "min": 100,
+            "max": 3000,
+            "step": 50
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetMeleeLockDistance",
+            "params": [
+              "{f}{value}"
+            ]
+          }
+        },
+        {
+          "id": "fRangedLockDistance:Main",
+          "type": "slider",
+          "text": "Ranged Lock Distance",
+          "help": "Maximum lock distance for guns, bows, thrown weapons, and other ranged weapons. The default preserves the current ranged behavior.",
+          "valueOptions": {
+            "sourceType": "ModSettingFloat",
+            "default": 2400,
+            "min": 500,
+            "max": 10000,
+            "step": 250
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetRangedLockDistance",
+            "params": [
+              "{f}{value}"
+            ]
+          }
+        },
+        {
+          "type": "section",
+          "text": "Target Selection"
+        },
+        {
+          "id": "iTargetSwitchLevel:Main",
+          "type": "dropdown",
+          "text": "Target Switch Gesture",
+          "help": "While locked, a strong right-stick movement or fast mouse drag can switch to another enemy near the crosshair.",
+          "valueOptions": {
+            "sourceType": "ModSettingInt",
+            "default": 2,
+            "options": [
+              "Disabled",
+              "Large Movement",
+              "Medium Movement",
+              "Small Movement",
+              "Very Small Movement"
+            ]
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetTargetSwitchLevel",
+            "params": [
+              "{i}{value}"
+            ]
+          }
+        },
+        {
+          "id": "fSearchConeDegrees:Main",
+          "type": "slider",
+          "text": "Acquisition Range",
+          "help": "Controls how close an enemy must be to the crosshair for initial lock-on. Lower values are more precise.",
+          "valueOptions": {
+            "sourceType": "ModSettingFloat",
+            "default": 14,
+            "min": 3,
+            "max": 24,
+            "step": 1
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetSearchConeDegrees",
+            "params": [
+              "{f}{value}"
+            ]
+          }
+        },
+        {
+          "id": "fNoFireTimeoutSeconds:Main",
+          "type": "slider",
+          "text": "Inactivity Release Time",
+          "help": "After lock-on, releases after this long without firing or moving the crosshair. Set to 0 to disable.",
+          "valueOptions": {
+            "sourceType": "ModSettingFloat",
+            "default": 4,
+            "min": 0,
+            "max": 15,
+            "step": 0.5
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetNoFireTimeoutSeconds",
+            "params": [
+              "{f}{value}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "pageDisplayName": "Usage",
+      "content": [
+        {
+          "type": "section",
+          "text": "Normal Aim Assist"
+        },
+        {
+          "type": "text",
+          "text": "Ranged assist works while aiming; melee assist works while blocking. Assist ends when that state ends."
+        },
+        {
+          "type": "section",
+          "text": "Independent Target Lock"
+        },
+        {
+          "type": "text",
+          "text": "Press the independent lock button to acquire a target. Once locked, no aiming or blocking is required; ranged crosshair tracking stays active, while melee keeps facing the target."
+        },
+        {
+          "type": "section",
+          "text": "Targets and Markers"
+        },
+        {
+          "type": "text",
+          "text": "If the target becomes invalid, the mod searches once and then stops if no replacement is found. The marker stays above the target's head; select the aim anchor under Lock-On Settings."
+        },
+        {
+          "type": "section",
+          "text": "Compatibility and Limitations"
+        },
+        {
+          "type": "text",
+          "text": "Normal assist reads the game's actual state and works with Toggle Aim mods. The high-zoom restriction can be disabled under Basic Settings."
+        }
+      ]
+    }
+  ]
+}

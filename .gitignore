@@ -1,0 +1,18 @@
+# Build and tool caches
+Source/.xmake/
+Source/build/
+Source/.vs/
+Source/*.user
+Source/*.suo
+
+# Local diagnostics and editor output
+*.log
+*.pdb
+*.obj
+*.ilk
+*.exp
+*.lib
+
+# Local staging directories
+.staging/
+_local/
