@@ -8,6 +8,7 @@
 [![Fallout 4](https://img.shields.io/badge/Fallout%204-1.10.163-4e73df?style=for-the-badge)](https://f4se.silverlock.org/)
 [![F4SE](https://img.shields.io/badge/F4SE-0.6.23-8250df?style=for-the-badge)](https://f4se.silverlock.org/)
 [![Input](https://img.shields.io/badge/input-gamepad%20%7C%20keyboard%2Fmouse-f0883e?style=for-the-badge)](#features)
+[![License](https://img.shields.io/badge/license-Non--Commercial%20Open%20License-dc2626?style=for-the-badge)](LICENSE.md)
 
 <p align="center">
   <b>[AIM] Aim Assist</b>&nbsp;&nbsp;·&nbsp;&nbsp;
@@ -117,4 +118,8 @@ The scripts accept the environment variables `CAPRICA_PATH`, `PAPYRUS_FLAGS`, `P
 
 ## License
 
-No redistribution license has been selected for this repository yet. Please contact the author before redistributing or bundling the source or compiled files.
+This project uses a custom **Non-Commercial Open License**. Non-commercial use, modification, patches, forks, non-commercial mod packs, and redistribution are allowed with attribution. Commercial use, paid bundling, paid support, and selling modified or compiled versions require prior permission from the author.
+
+本项目采用自定义的**非商业开放许可**。允许保留署名后的非商业使用、修改、补丁、分支、非商业整合包和再发布；商业使用、付费整合、付费支持以及销售修改版或编译版需要事先联系作者。
+
+See [LICENSE.md](LICENSE.md) for the complete bilingual terms. / 完整双语条款请查看 [LICENSE.md](LICENSE.md)。
