@@ -3,6 +3,10 @@
 > Fallout 4 的原生 F4SE 辅助瞄准与目标锁定模组，支持键鼠、手柄和目标标记。  
 > A native F4SE aim-assist and target-lock mod for Fallout 4 with keyboard, gamepad, and target markers.
 
+**暂时不支持最新的 Fallout 4 AE 版本（1.11.240）。**
+**The latest Fallout 4 AE version (1.11.240) is not supported at this time.**
+
+
 [![Status](https://img.shields.io/badge/status-stable-2ea44f?style=for-the-badge)](releases/v1.2.4/RELEASE_NOTES.md)
 [![Release](https://img.shields.io/badge/release-v1.2.4-0969da?style=for-the-badge)](releases/v1.2.4/)
 [![Fallout 4](https://img.shields.io/badge/Fallout%204-1.10.163-4e73df?style=for-the-badge)](https://f4se.silverlock.org/)
