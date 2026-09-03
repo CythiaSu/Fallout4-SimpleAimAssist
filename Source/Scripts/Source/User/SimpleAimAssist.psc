@@ -37,6 +37,10 @@ Function OnMcmSetAllowHighZoom(Bool abEnabled) Global
     SimpleAimAssistNative.SetAllowHighZoom(abEnabled)
 EndFunction
 
+Function OnMcmSetCrosshairTrackingEnabled(Bool abEnabled) Global
+    SimpleAimAssistNative.SetCrosshairTrackingEnabled(abEnabled)
+EndFunction
+
 Function OnMcmSetInputMode(Int aiMode) Global
     SimpleAimAssistNative.SetInputMode(aiMode)
 EndFunction
@@ -79,6 +83,10 @@ EndFunction
 
 Function OnMcmSetAimAnchor(Int aiAnchor) Global
     SimpleAimAssistNative.SetAimAnchor(aiAnchor)
+EndFunction
+
+Function OnMcmCycleAimAnchor() Global
+    SimpleAimAssistNative.CycleAimAnchor()
 EndFunction
 
 Function OnMcmSetTargetFrictionStrength(Float afValue) Global

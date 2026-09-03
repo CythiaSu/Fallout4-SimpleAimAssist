@@ -3,7 +3,7 @@
   "keybinds": [
     {
       "id": "SAA_TargetLockHotkey",
-      "desc": "锁定或取消当前目标",
+      "desc": "Lock or cancel current target",
       "action": {
         "type": "CallGlobalFunction",
         "script": "SimpleAimAssist",
@@ -12,7 +12,7 @@
     },
     {
       "id": "SAA_CycleAimAnchorHotkey",
-      "desc": "快速切换锚点",
+      "desc": "Quick Cycle Aim Anchor",
       "action": {
         "type": "CallGlobalFunction",
         "script": "SimpleAimAssist",

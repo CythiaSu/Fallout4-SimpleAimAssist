@@ -1,7 +1,7 @@
 set_xmakever("3.0.0")
 
 set_project("SimpleAimAssist")
-set_version("1.2.4")
+set_version("1.2.5")
 set_arch("x64")
 set_languages("c++23")
 set_warnings("allextra")

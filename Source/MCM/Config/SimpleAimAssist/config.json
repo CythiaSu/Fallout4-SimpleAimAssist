@@ -42,13 +42,14 @@
           "id": "iInputMode:Main",
           "type": "dropdown",
           "text": "输入设备",
-          "help": "手柄模式使用独立的搜索范围和跟踪参数。",
+          "help": "键鼠或手柄模式只接受所选设备；键鼠共存模式根据最近一次输入设备自动切换参数。",
           "valueOptions": {
             "sourceType": "ModSettingInt",
             "default": 1,
             "options": [
               "键盘 / 鼠标",
-              "手柄"
+              "手柄",
+              "键鼠共存（自动切换）"
             ]
           },
           "action": {
@@ -119,6 +120,24 @@
             "function": "OnMcmSetManualAimReturnDelay",
             "params": [
               "{i}{value}"
+            ]
+          }
+        },
+        {
+          "id": "bEnableCrosshairTracking:Main",
+          "type": "switcher",
+          "text": "持续准星追踪",
+          "help": "开启时持续跟随锁定目标；关闭后普通辅助只在首次获得目标时进行一次校正，独立锁定不受影响。",
+          "valueOptions": {
+            "sourceType": "ModSettingBool",
+            "default": true
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetCrosshairTrackingEnabled",
+            "params": [
+              "{b}{value}"
             ]
           }
         },
@@ -271,7 +290,7 @@
           "id": "SAA_TargetLockHotkey",
           "type": "hotkey",
           "text": "锁定目标按键",
-          "help": "没有默认按键。请在这里绑定一个自定义按键，避免占用游戏原版的鼠标中键切换视角。",
+          "help": "键鼠路径没有默认按键。请在这里绑定自定义按键；手柄纯模式会忽略此键，键鼠共存模式仍可使用。",
           "valueOptions": {
             "allowModifierKeys": true
           }
@@ -286,7 +305,7 @@
         },
         {
           "type": "text",
-          "text": "键鼠操作：需要在上方设置自定义锁定按键；未设置时不会占用鼠标中键。"
+          "text": "键鼠操作：需要在上方设置自定义锁定按键；未设置时不会占用鼠标中键。手柄纯模式不处理这个键。"
         },
         {
           "type": "text",
@@ -302,7 +321,7 @@
         },
         {
           "type": "text",
-          "text": "关闭独立锁定后，右摇杆恢复游戏原本的行为；开启后，右摇杆短按锁定或取消，长按执行所选固定动作。普通瞄准与格挡辅助不受影响，独立锁定可与 Toggle Aim 类模组同时使用。"
+          "text": "关闭独立锁定后，右摇杆恢复游戏原本的行为；开启后，手柄可用右摇杆短按锁定或取消，键鼠可用自定义按键。手柄纯模式忽略键鼠热键，键鼠共存模式两种路径都可用。普通瞄准与格挡辅助不受影响，独立锁定可与 Toggle Aim 类模组同时使用。"
         }
       ]
     },
@@ -334,6 +353,19 @@
             "params": [
               "{i}{value}"
             ]
+          }
+        },
+        {
+          "type": "section",
+          "text": "快捷操作"
+        },
+        {
+          "id": "SAA_CycleAimAnchorHotkey",
+          "type": "hotkey",
+          "text": "快速切换锚点",
+          "help": "按一次按身体、头部、下半身的顺序循环切换；默认不绑定。",
+          "valueOptions": {
+            "allowModifierKeys": true
           }
         },
         {

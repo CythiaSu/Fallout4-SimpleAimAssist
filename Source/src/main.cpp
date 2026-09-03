@@ -55,7 +55,15 @@ namespace
 	enum class InputMode
 	{
 		kKeyboardMouse = 0,
-		kGamepad = 1
+		kGamepad = 1,
+		kAuto = 2
+	};
+
+	enum class InputDevice
+	{
+		kUnknown,
+		kKeyboardMouse,
+		kGamepad
 	};
 
 	enum class WeaponRangeClass
@@ -126,7 +134,7 @@ namespace
 		int   targetMarkerStyle{ 6 };
 		bool  onlyCombatTargets{ true };
 		bool  allowOutOfCombatHostileTargets{ false };
-		bool  continueWhileHoldingZoom{ true };
+		bool  continueCrosshairTracking{ true };
 		bool  showTargetAcquiredMessage{ false };
 		bool  showLockHudHint{ false };
 		bool  focusEnabled{ false };
@@ -201,6 +209,7 @@ namespace
 		float           lastPitchStep{ 0.0F };
 		float           lastYawError{ 0.0F };
 		float           lastPitchError{ 0.0F };
+		float           lastAimErrorDegrees{ std::numeric_limits<float>::max() };
 		float           lastTargetSampleTime{ 0.0F };
 		float           nextLineOfSightCheck{ 0.0F };
 		float           lostLineOfSightSince{ -1.0F };
@@ -225,6 +234,8 @@ namespace
 		float           targetSwitchAt{ 0.0F };
 		float           targetSwitchCooldownUntil{ 0.0F };
 		float           lastAimActivityTime{ 0.0F };
+		bool            initialAssistCorrectionDone{ false };
+		bool            normalAssistSourceLatched{ false };
 	};
 
 	Config        g_config{};
@@ -248,6 +259,8 @@ namespace
 	int           g_mcmAimAnchor = 0;
 	int           g_mcmManualAimReturnDelay = 1;
 	InputMode     g_inputMode = InputMode::kGamepad;
+	InputDevice   g_lastInputDevice = InputDevice::kUnknown;
+	float         g_lastInputDeviceAt = -1.0F;
 	bool          g_inputModeInitialized = false;
 	bool          g_targetMarkerMenuRegistered = false;
 	bool          g_targetMarkerMenuReady = false;
@@ -271,6 +284,118 @@ namespace
 	float Clamp(float a_value, float a_min, float a_max)
 	{
 		return std::clamp(a_value, a_min, a_max);
+	}
+
+	InputMode InputModeFromInt(int a_mode)
+	{
+		switch (a_mode) {
+		case 0:
+			return InputMode::kKeyboardMouse;
+		case 2:
+			return InputMode::kAuto;
+		default:
+			return InputMode::kGamepad;
+		}
+	}
+
+	int InputModeToInt(InputMode a_mode)
+	{
+		switch (a_mode) {
+		case InputMode::kKeyboardMouse:
+			return 0;
+		case InputMode::kAuto:
+			return 2;
+		default:
+			return 1;
+		}
+	}
+
+	InputDevice InputDeviceFromRuntime(RE::INPUT_DEVICE a_device)
+	{
+		switch (a_device) {
+		case RE::INPUT_DEVICE::kKeyboard:
+		case RE::INPUT_DEVICE::kMouse:
+			return InputDevice::kKeyboardMouse;
+		case RE::INPUT_DEVICE::kGamepad:
+			return InputDevice::kGamepad;
+		default:
+			return InputDevice::kUnknown;
+		}
+	}
+
+	InputDevice SelectedInputDevice()
+	{
+		return g_inputMode == InputMode::kGamepad ?
+			InputDevice::kGamepad : InputDevice::kKeyboardMouse;
+	}
+
+	InputDevice ActiveProfileDevice()
+	{
+		if (g_inputMode == InputMode::kAuto) {
+			return g_lastInputDevice == InputDevice::kGamepad ?
+				InputDevice::kGamepad : InputDevice::kKeyboardMouse;
+		}
+		return SelectedInputDevice();
+	}
+
+	bool IsInputDeviceAllowedByMode(InputDevice a_device)
+	{
+		return a_device != InputDevice::kUnknown &&
+			(g_inputMode == InputMode::kAuto || a_device == SelectedInputDevice());
+	}
+
+	bool IsNormalAssistSourceAllowed()
+	{
+		return g_inputMode == InputMode::kAuto ||
+			g_lastInputDevice == SelectedInputDevice();
+	}
+
+	std::string_view InputDeviceName(InputDevice a_device)
+	{
+		switch (a_device) {
+		case InputDevice::kKeyboardMouse:
+			return "keyboard/mouse";
+		case InputDevice::kGamepad:
+			return "gamepad";
+		default:
+			return "unknown";
+		}
+	}
+
+	std::string_view InputModeName(InputMode a_mode)
+	{
+		switch (a_mode) {
+		case InputMode::kKeyboardMouse:
+			return "keyboard/mouse only";
+		case InputMode::kAuto:
+			return "keyboard/mouse + gamepad auto";
+		default:
+			return "gamepad only";
+		}
+	}
+
+	std::string_view AimAnchorName(AimAnchor a_anchor)
+	{
+		switch (a_anchor) {
+		case AimAnchor::kHead:
+			return "Head";
+		case AimAnchor::kLowerBody:
+			return "Lower Body";
+		default:
+			return "Body";
+		}
+	}
+
+	std::string_view AimAnchorChineseName(AimAnchor a_anchor)
+	{
+		switch (a_anchor) {
+		case AimAnchor::kHead:
+			return "瞄准头部";
+		case AimAnchor::kLowerBody:
+			return "瞄准下体";
+		default:
+			return "瞄准身体";
+		}
 	}
 
 	struct TargetSwitchThresholds
@@ -534,13 +659,13 @@ namespace
 	void LoadConfig()
 	{
 		if (!g_inputModeInitialized) {
-			g_inputMode = ReadIniInt("InputMode", "iInputMode", 1) == 1 ? InputMode::kGamepad : InputMode::kKeyboardMouse;
+			g_inputMode = InputModeFromInt(ReadIniInt("InputMode", "iInputMode", 1));
 			g_inputModeInitialized = true;
 		}
 		const bool hasMcmSettings = fs::exists("Data/MCM/Settings/SimpleAimAssist.ini");
 		if (hasMcmSettings) {
 			g_userEnabled = ReadMcmFloat("Main", "bEnabled", g_userEnabled ? 1.0F : 0.0F) != 0.0F;
-			g_inputMode = ReadMcmInt("Main", "iInputMode", g_inputMode == InputMode::kGamepad ? 1 : 0) == 1 ? InputMode::kGamepad : InputMode::kKeyboardMouse;
+			g_inputMode = InputModeFromInt(ReadMcmInt("Main", "iInputMode", InputModeToInt(g_inputMode)));
 			g_inputModeInitialized = true;
 		}
 
@@ -583,7 +708,10 @@ namespace
 			"bNoFireTimeoutAffectsIndependentLock",
 			g_config.noFireTimeoutAffectsIndependentLock);
 		g_config.useRaceAimPoints = ReadIniBool("Targeting", "bUseRaceAimPoints", g_config.useRaceAimPoints);
-		g_config.continueWhileHoldingZoom = ReadIniBool("Assist", "bContinueWhileHoldingZoom", g_config.continueWhileHoldingZoom);
+		g_config.continueCrosshairTracking = ReadIniBool(
+			"Assist",
+			"bEnableCrosshairTracking",
+			ReadIniBool("Assist", "bContinueWhileHoldingZoom", g_config.continueCrosshairTracking));
 		g_config.assistDuration = Clamp(ReadIniFloat("Assist", "fAssistDuration", g_config.assistDuration), 0.05F, 5.0F);
 		g_config.assistStrength = Clamp(ReadIniFloat("Assist", "fAssistStrength", g_config.assistStrength), 0.05F, 1.0F);
 		g_config.maxAssistSpeed = Clamp(ReadIniFloat("Assist", "fMaxAssistSpeed", g_config.maxAssistSpeed), 1.0F, 360.0F);
@@ -654,7 +782,7 @@ namespace
 		g_config.focusTimeScale = Clamp(ReadIniFloat("Focus", "fFocusTimeScale", g_config.focusTimeScale), 0.30F, 1.0F);
 		g_config.focusAPPerSecond = Clamp(ReadIniFloat("Focus", "fFocusAPPerSecond", g_config.focusAPPerSecond), 1.0F, 100.0F);
 		g_config.focusMinAP = Clamp(ReadIniFloat("Focus", "fFocusMinAP", g_config.focusMinAP), 0.0F, 50.0F);
-		if (g_inputMode == InputMode::kGamepad) {
+		if (ActiveProfileDevice() == InputDevice::kGamepad) {
 			g_config.searchConeDegrees = Clamp(ReadIniFloat("Gamepad", "fSearchConeDegrees", 16.0F), 3.0F, 45.0F);
 			g_config.lockYawResponse = Clamp(ReadIniFloat("Gamepad", "fLockYawResponse", 10.0F), 1.0F, 30.0F);
 			g_config.lockPitchResponse = Clamp(ReadIniFloat("Gamepad", "fLockPitchResponse", 8.0F), 1.0F, 30.0F);
@@ -716,6 +844,11 @@ namespace
 				0,
 				5);
 			g_config.targetMarkerStyle = g_mcmTargetMarkerStyle + 1;
+			g_config.continueCrosshairTracking =
+				ReadMcmFloat(
+					"Main",
+					"bEnableCrosshairTracking",
+					g_config.continueCrosshairTracking ? 1.0F : 0.0F) != 0.0F;
 			g_mcmRangedLockDistance = Clamp(
 				ReadMcmFloat("Main", "fRangedLockDistance", g_mcmRangedLockDistance),
 				500.0F,
@@ -737,6 +870,50 @@ namespace
 		g_config.showTargetAcquiredMessage = ReadIniBool("Feedback", "bShowTargetAcquiredMessage", g_config.showTargetAcquiredMessage);
 		g_config.showLockHudHint = ReadIniBool("Feedback", "bShowLockHudHint", g_config.showLockHudHint);
 		g_config.hudHintCooldown = Clamp(ReadIniFloat("Feedback", "fHudHintCooldown", g_config.hudHintCooldown), 0.2F, 10.0F);
+	}
+
+	void ObserveInputDevice(RE::INPUT_DEVICE a_device)
+	{
+		const auto inputDevice = InputDeviceFromRuntime(a_device);
+		if (inputDevice == InputDevice::kUnknown) {
+			return;
+		}
+
+		if (g_lastInputDevice == inputDevice) {
+			g_lastInputDeviceAt = NowSeconds();
+			return;
+		}
+
+		g_lastInputDevice = inputDevice;
+		g_lastInputDeviceAt = NowSeconds();
+		if (g_inputMode == InputMode::kAuto) {
+			LoadConfig();
+		}
+		Log(std::format(
+			"Last input device changed: device={} mode={} profileDevice={}",
+			InputDeviceName(g_lastInputDevice),
+			InputModeName(g_inputMode),
+			InputDeviceName(ActiveProfileDevice())));
+	}
+
+	bool IsChineseMcmConfiguration()
+	{
+		std::ifstream in("Data/MCM/Config/SimpleAimAssist/config.json", std::ios::binary);
+		if (!in) {
+			return false;
+		}
+
+		std::ostringstream contents;
+		contents << in.rdbuf();
+		return contents.str().find("简单辅助瞄准") != std::string::npos;
+	}
+
+	std::string AimAnchorHudMessage(AimAnchor a_anchor)
+	{
+		if (IsChineseMcmConfiguration()) {
+			return std::string(AimAnchorChineseName(a_anchor));
+		}
+		return std::format("Aim at {}", AimAnchorName(a_anchor));
 	}
 
 	void ShowTargetHudHint(float a_now)
@@ -862,6 +1039,7 @@ namespace
 		g_zoomHeld = true;
 		g_lastFrameTime = a_now;
 		BeginAssistInternal(a_now, true);
+		g_runtime.normalAssistSourceLatched = !g_toggleLockActive;
 	}
 
 	void StopZoomAssist()
@@ -1708,7 +1886,8 @@ namespace
 	void RequestTargetSwitch(float a_delay = kTargetSwitchRequestDelay)
 	{
 		if (!g_zoomHeld || !IsFeatureEnabled() || !g_config.autoTriggerOnZoom ||
-			g_runtime.state != AssistState::kAssisting || g_config.targetSwitchLevel <= 0) {
+			g_runtime.state != AssistState::kAssisting || g_config.targetSwitchLevel <= 0 ||
+			(!g_config.continueCrosshairTracking && !g_toggleLockActive)) {
 			return;
 		}
 
@@ -2189,7 +2368,7 @@ namespace
 
 		if (g_runtime.manualAimOffsetPending && now >= g_runtime.manualAimCaptureAfter) {
 			const RE::NiPoint3 currentAngle = a_player->data.angle;
-			const float offsetRetention = g_inputMode == InputMode::kGamepad ?
+			const float offsetRetention = ActiveProfileDevice() == InputDevice::kGamepad ?
 				g_config.manualAimGamepadOffsetRetention : g_config.manualAimKeyboardMouseOffsetRetention;
 			g_runtime.manualAimOffsetYaw = Clamp(NormalizeAngle(currentAngle.z - desiredYaw) * offsetRetention, -kManualAimMaxYawOffset, kManualAimMaxYawOffset);
 			g_runtime.manualAimOffsetPitch = Clamp(NormalizeAngle(currentAngle.x - desiredPitch) * offsetRetention, -kManualAimMaxPitchOffset, kManualAimMaxPitchOffset);
@@ -2222,6 +2401,9 @@ namespace
 		const float yawDelta = NormalizeAngle(desiredYaw - newAngle.z);
 		const float pitchDelta = NormalizeAngle(desiredPitch - newAngle.x);
 		const float errorDegrees = std::sqrt((yawDelta * yawDelta) + (pitchDelta * pitchDelta)) * kRadToDeg;
+		g_runtime.lastYawError = yawDelta;
+		g_runtime.lastPitchError = pitchDelta;
+		g_runtime.lastAimErrorDegrees = errorDegrees;
 		if (errorDegrees <= g_config.lockDeadZoneDegrees) {
 			return true;
 		}
@@ -2370,17 +2552,19 @@ namespace
 			const bool manualOverride = a_now < g_runtime.manualAimOverrideUntil;
 			if (g_runtime.targetSwitchRequested && a_now >= g_runtime.targetSwitchAt) {
 				g_runtime.targetSwitchRequested = false;
-				if (auto* nextTarget = FindBestTarget(player, targetPtr.get())) {
-					g_runtime.target = RE::BSPointerHandleManagerInterface<RE::Actor>::GetHandle(nextTarget);
-					g_runtime.targetFormID = nextTarget->GetFormID();
-					g_runtime.hasLastTargetPoint = false;
-					g_runtime.smoothedTargetVelocity = {};
-					g_runtime.manualAimOffsetPending = false;
-					g_runtime.manualAimOffsetValid = false;
-					g_runtime.targetSwitchCooldownUntil = a_now + kTargetSwitchCooldown;
-					g_runtime.lastAimActivityTime = a_now;
-					Log("Manual target switch acquired a nearby hostile target");
-					return true;
+				if (g_config.continueCrosshairTracking || g_toggleLockActive) {
+					if (auto* nextTarget = FindBestTarget(player, targetPtr.get())) {
+						g_runtime.target = RE::BSPointerHandleManagerInterface<RE::Actor>::GetHandle(nextTarget);
+						g_runtime.targetFormID = nextTarget->GetFormID();
+						g_runtime.hasLastTargetPoint = false;
+						g_runtime.smoothedTargetVelocity = {};
+						g_runtime.manualAimOffsetPending = false;
+						g_runtime.manualAimOffsetValid = false;
+						g_runtime.targetSwitchCooldownUntil = a_now + kTargetSwitchCooldown;
+						g_runtime.lastAimActivityTime = a_now;
+						Log("Manual target switch acquired a nearby hostile target");
+						return true;
+					}
 				}
 			}
 			if (g_config.requireLineOfSight && a_now >= g_runtime.nextLineOfSightCheck) {
@@ -2409,14 +2593,16 @@ namespace
 				}
 				g_runtime.lostLineOfSightSince = -1.0F;
 
-				if (auto* closerTarget = FindBestTarget(player, targetPtr.get()); closerTarget &&
-					ShouldSwitchToTarget(player, targetPtr.get(), closerTarget)) {
-					g_runtime.target = RE::BSPointerHandleManagerInterface<RE::Actor>::GetHandle(closerTarget);
-					g_runtime.targetFormID = closerTarget->GetFormID();
-					g_runtime.hasLastTargetPoint = false;
-					g_runtime.smoothedTargetVelocity = {};
-					Log("Lock-on target switched to closer candidate");
-					return true;
+				if (g_config.continueCrosshairTracking || g_toggleLockActive) {
+					if (auto* closerTarget = FindBestTarget(player, targetPtr.get()); closerTarget &&
+						ShouldSwitchToTarget(player, targetPtr.get(), closerTarget)) {
+						g_runtime.target = RE::BSPointerHandleManagerInterface<RE::Actor>::GetHandle(closerTarget);
+						g_runtime.targetFormID = closerTarget->GetFormID();
+						g_runtime.hasLastTargetPoint = false;
+						g_runtime.smoothedTargetVelocity = {};
+						Log("Lock-on target switched to closer candidate");
+						return true;
+					}
 				}
 			}
 
@@ -2441,7 +2627,30 @@ namespace
 					assistMultiplier = 1.0F;
 				}
 			}
-			return ApplyAssistStep(player, targetPtr.get(), Clamp(a_delta, 0.0F, 0.05F), assistMultiplier);
+			const bool shouldTrackCrosshair =
+				g_config.continueCrosshairTracking || g_toggleLockActive;
+			if (!shouldTrackCrosshair && g_runtime.initialAssistCorrectionDone) {
+				return true;
+			}
+
+			// Normal assist and the one-shot mode use the same correction step. The
+			// one-shot mode ends only after the selected anchor is reached; it does
+			// not use a wall-clock timeout.
+			const float assistDelta = Clamp(a_delta, 0.0F, 0.05F);
+			if (!shouldTrackCrosshair && assistDelta <= 0.0F) {
+				return true;
+			}
+			const bool applied = ApplyAssistStep(player, targetPtr.get(), assistDelta, assistMultiplier);
+			if (shouldTrackCrosshair) {
+				g_runtime.initialAssistCorrectionDone = true;
+			} else if (g_runtime.lastAimErrorDegrees <= g_config.lockDeadZoneDegrees) {
+				g_runtime.initialAssistCorrectionDone = true;
+				Log(std::format(
+					"Initial aim correction converged: errorDegrees={} success={}",
+					g_runtime.lastAimErrorDegrees,
+					applied));
+			}
+			return applied;
 		}
 
 		return g_runtime.state != AssistState::kIdle;
@@ -2457,6 +2666,8 @@ namespace
 		g_runtime.state = AssistState::kIdle;
 		g_runtime.target.reset();
 		g_runtime.autoActive = false;
+		g_runtime.initialAssistCorrectionDone = false;
+		g_runtime.normalAssistSourceLatched = false;
 		return true;
 	}
 
@@ -2485,6 +2696,7 @@ namespace
 
 		StartZoomAssist(a_now);
 		g_toggleLockActive = true;
+		g_runtime.normalAssistSourceLatched = false;
 		g_runtime.target =
 			RE::BSPointerHandleManagerInterface<RE::Actor>::GetHandle(target);
 		g_runtime.state = AssistState::kAssisting;
@@ -2505,6 +2717,10 @@ namespace
 		LoadConfig();
 		if (g_config.aimActivationMode != AimActivationMode::kToggleLock) {
 			Log("Target-lock hotkey ignored: independent mode disabled");
+			return false;
+		}
+		if (g_inputMode == InputMode::kGamepad) {
+			Log("Keyboard/mouse target-lock hotkey ignored in gamepad-only mode");
 			return false;
 		}
 
@@ -2589,6 +2805,18 @@ namespace
 			"; iniWrite=" + (iniWritten ? "ok" : "failed") +
 			" mcmWrite=" + (mcmWritten ? "ok" : "failed"));
 		return !g_config.disableOnHighZoom;
+	}
+
+	bool SetCrosshairTrackingEnabled(std::monostate, bool a_enabled)
+	{
+		const bool iniWritten = WriteIniValue("Assist", "bEnableCrosshairTracking", a_enabled ? "1" : "0");
+		const bool mcmWritten = WriteMcmValue("Main", "bEnableCrosshairTracking", a_enabled ? "1" : "0");
+		LoadConfig();
+		Log(std::string("Continuous crosshair tracking ") +
+			(a_enabled ? "enabled" : "disabled") +
+			"; iniWrite=" + (iniWritten ? "ok" : "failed") +
+			" mcmWrite=" + (mcmWritten ? "ok" : "failed"));
+		return g_config.continueCrosshairTracking;
 	}
 
 	bool ToggleFocusMode(std::monostate)
@@ -2729,6 +2957,21 @@ namespace
 		return g_mcmAimAnchor;
 	}
 
+	int CycleAimAnchor(std::monostate)
+	{
+		LoadConfig();
+		g_mcmAimAnchor = (std::clamp(g_mcmAimAnchor, 0, 2) + 1) % 3;
+		WriteIniValue("Targeting", "iAimAnchor", std::to_string(g_mcmAimAnchor));
+		WriteMcmValue("Main", "iAimAnchor", std::to_string(g_mcmAimAnchor));
+		LoadConfig();
+
+		const auto anchor = static_cast<AimAnchor>(g_mcmAimAnchor);
+		const std::string message = AimAnchorHudMessage(anchor);
+		RE::SendHUDMessage::ShowHUDMessage(message.c_str(), nullptr, true, false);
+		Log(std::format("Aim anchor cycled: value={} name={}", g_mcmAimAnchor, AimAnchorName(anchor)));
+		return g_mcmAimAnchor;
+	}
+
 	bool SetToggleAimMode(std::monostate, bool a_enabled)
 	{
 		WriteIniValue("General", "bToggleAimMode", a_enabled ? "1" : "0");
@@ -2784,18 +3027,19 @@ namespace
 
 	int GetInputMode(std::monostate)
 	{
-		return g_inputMode == InputMode::kGamepad ? 1 : 0;
+		return InputModeToInt(g_inputMode);
 	}
 
 	int SetInputMode(std::monostate, int a_mode)
 	{
 		g_inputModeInitialized = true;
-		g_inputMode = a_mode == 1 ? InputMode::kGamepad : InputMode::kKeyboardMouse;
-		WriteIniValue("InputMode", "iInputMode", g_inputMode == InputMode::kGamepad ? "1" : "0");
-		WriteMcmValue("Main", "iInputMode", g_inputMode == InputMode::kGamepad ? "1" : "0");
+		g_inputMode = InputModeFromInt(a_mode);
+		const auto modeValue = std::to_string(InputModeToInt(g_inputMode));
+		WriteIniValue("InputMode", "iInputMode", modeValue);
+		WriteMcmValue("Main", "iInputMode", modeValue);
 		StopZoomAssist();
 		LoadConfig();
-		Log(g_inputMode == InputMode::kGamepad ? "Input mode set to gamepad" : "Input mode set to keyboard/mouse");
+		Log(std::format("Input mode set: {}", InputModeName(g_inputMode)));
 		return GetInputMode(std::monostate{});
 	}
 
@@ -2851,10 +3095,11 @@ namespace
 			if (!a_event) {
 				return;
 			}
+			ObserveInputDevice(a_event->device.get());
 			LogInputEventOnce(a_event);
 
 			if (g_config.aimActivationMode == AimActivationMode::kToggleLock &&
-				g_inputMode == InputMode::kGamepad &&
+				IsInputDeviceAllowedByMode(InputDevice::kGamepad) &&
 				IsGamepadTargetLockButton(a_event)) {
 				auto* mutableEvent = const_cast<RE::ButtonEvent*>(a_event);
 				mutableEvent->handled = RE::InputEvent::HANDLED_RESULT::kStop;
@@ -2885,15 +3130,21 @@ namespace
 				return;
 			}
 
-			if (IsFireEvent(a_event)) {
+			if (IsFireEvent(a_event) &&
+				IsInputDeviceAllowedByMode(InputDeviceFromRuntime(a_event->device.get()))) {
 				RegisterFireActivity(a_event);
 			}
 		}
 
 		void OnThumbstickEvent(const RE::ThumbstickEvent* a_event) override
 		{
+			if (!a_event) {
+				return;
+			}
+			ObserveInputDevice(a_event->device.get());
 			LogThumbstickEventOnce(a_event);
-			if (!a_event || g_inputMode != InputMode::kGamepad || a_event->QIDCode() != RE::ThumbstickEvent::kRight) {
+			if (!IsInputDeviceAllowedByMode(InputDevice::kGamepad) ||
+				a_event->QIDCode() != RE::ThumbstickEvent::kRight) {
 				return;
 			}
 
@@ -2904,13 +3155,20 @@ namespace
 
 		void OnMouseMoveEvent(const RE::MouseMoveEvent* a_event) override
 		{
-			if (!a_event || g_inputMode != InputMode::kKeyboardMouse) {
+			if (!a_event) {
 				return;
 			}
 
 			const float mouseX = static_cast<float>(a_event->mouseInputX);
 			const float mouseY = static_cast<float>(a_event->mouseInputY);
 			const float magnitude = std::sqrt((mouseX * mouseX) + (mouseY * mouseY));
+			if (magnitude <= 0.0F) {
+				return;
+			}
+			ObserveInputDevice(a_event->device.get());
+			if (!IsInputDeviceAllowedByMode(InputDevice::kKeyboardMouse)) {
+				return;
+			}
 			RegisterManualAimInput(magnitude);
 			RegisterTargetSwitchGesture(magnitude, GetTargetSwitchThresholds().keyboardMouse);
 		}
@@ -2970,8 +3228,10 @@ namespace
 			}
 			const bool normalAimAssistRequested =
 				meleeWeapon ? meleeGuardActive : actualAimState;
+			const bool normalAssistSourceAllowed =
+				g_zoomHeld ? g_runtime.normalAssistSourceLatched : IsNormalAssistSourceAllowed();
 			const bool assistRequested =
-				normalAimAssistRequested || g_toggleLockActive;
+				(normalAimAssistRequested && normalAssistSourceAllowed) || g_toggleLockActive;
 			const bool shouldAssist =
 				assistRequested && IsFeatureEnabled() && g_config.autoTriggerOnZoom;
 			if (shouldAssist && !g_zoomHeld) {
@@ -3024,6 +3284,8 @@ namespace
 		if (a_msg->type == F4SE::MessagingInterface::kPreLoadGame ||
 			a_msg->type == F4SE::MessagingInterface::kNewGame) {
 			StopZoomAssist();
+			g_lastInputDevice = InputDevice::kUnknown;
+			g_lastInputDeviceAt = -1.0F;
 			g_toggleLockActive = false;
 			g_gamepadLockButtonHeld = false;
 			g_gamepadLockButtonPressedAt = 0.0F;
@@ -3062,6 +3324,7 @@ namespace
 		a_vm->BindNativeMethod("SimpleAimAssistNative", "SetTargetMarkerEnabled", SetTargetMarkerEnabled);
 		a_vm->BindNativeMethod("SimpleAimAssistNative", "SetTargetMarkerStyle", SetTargetMarkerStyle);
 		a_vm->BindNativeMethod("SimpleAimAssistNative", "SetAllowHighZoom", SetAllowHighZoom);
+		a_vm->BindNativeMethod("SimpleAimAssistNative", "SetCrosshairTrackingEnabled", SetCrosshairTrackingEnabled);
 		a_vm->BindNativeMethod("SimpleAimAssistNative", "ToggleFocusMode", ToggleFocusMode);
 		a_vm->BindNativeMethod("SimpleAimAssistNative", "SetAssistStrengthScale", SetAssistStrengthScale);
 		a_vm->BindNativeMethod("SimpleAimAssistNative", "SetTargetFrictionStrength", SetTargetFrictionStrength);
@@ -3074,6 +3337,7 @@ namespace
 		a_vm->BindNativeMethod("SimpleAimAssistNative", "SetMeleeLockDistance", SetMeleeLockDistance);
 		a_vm->BindNativeMethod("SimpleAimAssistNative", "SetRangedLockDistance", SetRangedLockDistance);
 		a_vm->BindNativeMethod("SimpleAimAssistNative", "SetAimAnchor", SetAimAnchor);
+		a_vm->BindNativeMethod("SimpleAimAssistNative", "CycleAimAnchor", CycleAimAnchor);
 		a_vm->BindNativeMethod("SimpleAimAssistNative", "SetToggleAimMode", SetToggleAimMode);
 		a_vm->BindNativeMethod("SimpleAimAssistNative", "SetGamepadLongPressAction", SetGamepadLongPressAction);
 		a_vm->BindNativeMethod("SimpleAimAssistNative", "ToggleTargetLock", TogglePersistentTargetLock);
@@ -3088,7 +3352,7 @@ namespace
 
 SAA_EXPORT F4SE::PluginVersionData F4SEPlugin_Version = []() noexcept {
 	F4SE::PluginVersionData v{};
-	v.PluginVersion({ 1, 2, 4, 0 });
+	v.PluginVersion({ 1, 2, 5, 0 });
 	v.PluginName("SimpleAimAssist");
 	v.AuthorName("Sylva");
 	v.UsesAddressLibrary(true);
@@ -3102,7 +3366,7 @@ SAA_EXPORT F4SE::PluginVersionData F4SEPlugin_Version = []() noexcept {
 		F4SE::RUNTIME_1_10_980, F4SE::RUNTIME_1_10_984,
 		F4SE::RUNTIME_1_11_137, F4SE::RUNTIME_1_11_159,
 		F4SE::RUNTIME_1_11_169, F4SE::RUNTIME_1_11_191,
-		F4SE::RUNTIME_1_11_221
+		F4SE::RUNTIME_1_11_221, F4SE::RUNTIME_1_11_240
 	});
 	return v;
 }();

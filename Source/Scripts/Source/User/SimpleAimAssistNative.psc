@@ -10,6 +10,7 @@ Bool Function SetEnabled(Bool abEnabled) Global Native
 Bool Function SetTargetMarkerEnabled(Bool abEnabled) Global Native
 Int Function SetTargetMarkerStyle(Int aiStyle) Global Native
 Bool Function SetAllowHighZoom(Bool abEnabled) Global Native
+Bool Function SetCrosshairTrackingEnabled(Bool abEnabled) Global Native
 Bool Function ToggleFocusMode() Global Native
 Float Function SetAssistStrengthScale(Float afValue) Global Native
 Float Function SetTargetFrictionStrength(Float afValue) Global Native
@@ -22,6 +23,7 @@ Bool Function SetAllowOutOfCombatHostileTargets(Bool abEnabled) Global Native
 Float Function SetMeleeLockDistance(Float afValue) Global Native
 Float Function SetRangedLockDistance(Float afValue) Global Native
 Int Function SetAimAnchor(Int aiAnchor) Global Native
+Int Function CycleAimAnchor() Global Native
 Bool Function SetToggleAimMode(Bool abEnabled) Global Native
 Int Function SetGamepadLongPressAction(Int aiAction) Global Native
 Bool Function ToggleTargetLock() Global Native

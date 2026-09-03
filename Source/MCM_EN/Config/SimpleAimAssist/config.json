@@ -42,13 +42,14 @@
           "id": "iInputMode:Main",
           "type": "dropdown",
           "text": "Input Device",
-          "help": "Gamepad mode uses its own acquisition and tracking parameters.",
+          "help": "Keyboard/mouse and gamepad modes accept only the selected device; coexistence mode switches tuning from the most recent input device.",
           "valueOptions": {
             "sourceType": "ModSettingInt",
             "default": 1,
             "options": [
               "Keyboard / Mouse",
-              "Gamepad"
+              "Gamepad",
+              "Keyboard / Mouse + Gamepad (Auto)"
             ]
           },
           "action": {
@@ -123,6 +124,24 @@
           }
         },
         {
+          "id": "bEnableCrosshairTracking:Main",
+          "type": "switcher",
+          "text": "Continuous Crosshair Tracking",
+          "help": "When enabled, the crosshair keeps following the locked target. When disabled, normal assist makes one initial correction only; Independent Lock is unaffected.",
+          "valueOptions": {
+            "sourceType": "ModSettingBool",
+            "default": true
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetCrosshairTrackingEnabled",
+            "params": [
+              "{b}{value}"
+            ]
+          }
+        },
+        {
           "type": "section",
           "text": "Target Marker"
         },
@@ -169,6 +188,54 @@
               "{i}{value}"
             ]
           }
+        },
+        {
+          "type": "section",
+          "text": "Lock Behavior"
+        },
+        {
+          "id": "bNoFireTimeoutAffectsIndependentLock:Main",
+          "type": "switcher",
+          "text": "Apply Inactivity Release to Independent Lock",
+          "help": "When enabled, Independent Lock also exits after the configured period without firing or crosshair input. Disabled by default, which is useful for melee approaches.",
+          "valueOptions": {
+            "sourceType": "ModSettingBool",
+            "default": false
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetNoFireTimeoutAffectsIndependentLock",
+            "params": [
+              "{b}{value}"
+            ]
+          }
+        },
+        {
+          "type": "text",
+          "text": "Independent Lock is unaffected by this timeout by default."
+        },
+        {
+          "id": "bAllowOutOfCombatHostileTargets:Main",
+          "type": "switcher",
+          "text": "Allow Out-of-Combat Hostile Targets",
+          "help": "Experimental. Allows a target that is hostile to the player to be acquired before combat starts. Faction hostility, distance, line of sight, and crosshair limits still apply.",
+          "valueOptions": {
+            "sourceType": "ModSettingBool",
+            "default": false
+          },
+          "action": {
+            "type": "CallGlobalFunction",
+            "script": "SimpleAimAssist",
+            "function": "OnMcmSetAllowOutOfCombatHostileTargets",
+            "params": [
+              "{b}{value}"
+            ]
+          }
+        },
+        {
+          "type": "text",
+          "text": "Experimental and not fully verified. This setting affects both normal aim assist and Independent Lock."
         }
       ]
     },
@@ -223,7 +290,7 @@
           "id": "SAA_TargetLockHotkey",
           "type": "hotkey",
           "text": "Target Lock Key",
-          "help": "Uses the middle mouse button by default. Binding a key here replaces the default button.",
+          "help": "The keyboard/mouse path has no default key. Bind one here; Gamepad-only mode ignores it, while Auto mode keeps it available.",
           "valueOptions": {
             "allowModifierKeys": true
           }
@@ -238,7 +305,7 @@
         },
         {
           "type": "text",
-          "text": "Keyboard and mouse: middle mouse is the default; assigning a custom key disables the middle mouse binding."
+          "text": "Keyboard and mouse: bind a custom key above; no key is occupied until you bind one. Gamepad-only mode ignores this keyboard/mouse hotkey."
         },
         {
           "type": "text",
@@ -254,7 +321,7 @@
         },
         {
           "type": "text",
-          "text": "When Independent Lock is disabled, the right stick keeps its normal game behavior. When enabled, short-click locks or cancels and long-press performs the selected fixed action. Normal aim and block assist remain available, and Independent Lock works with Toggle Aim mods."
+          "text": "When Independent Lock is disabled, the right stick keeps its normal game behavior. When enabled, gamepad short-click locks or cancels and long-press performs the selected fixed action; the keyboard/mouse hotkey is available in keyboard/mouse and Auto modes. Normal aim and block assist remain available, and Independent Lock works with Toggle Aim mods."
         }
       ]
     },
@@ -286,6 +353,19 @@
             "params": [
               "{i}{value}"
             ]
+          }
+        },
+        {
+          "type": "section",
+          "text": "Quick Controls"
+        },
+        {
+          "id": "SAA_CycleAimAnchorHotkey",
+          "type": "hotkey",
+          "text": "Quick Cycle Aim Anchor",
+          "help": "Cycles Body, Head, and Lower Body in order. Unbound by default.",
+          "valueOptions": {
+            "allowModifierKeys": true
           }
         },
         {
