@@ -243,6 +243,8 @@ namespace
 	std::mutex    g_logMutex;
 	bool          g_inputSinkRegistered = false;
 	bool          g_zoomHeld = false;
+	bool          g_keyboardMouseFireHeld = false;
+	bool          g_gamepadFireHeld = false;
 	bool          g_toggleLockActive = false;
 	bool          g_gamepadLockButtonHeld = false;
 	float         g_gamepadLockButtonPressedAt = 0.0F;
@@ -348,6 +350,34 @@ namespace
 	{
 		return g_inputMode == InputMode::kAuto ||
 			g_lastInputDevice == SelectedInputDevice();
+	}
+
+	bool IsFireInputHeld()
+	{
+		switch (g_inputMode) {
+		case InputMode::kKeyboardMouse:
+			return g_keyboardMouseFireHeld;
+		case InputMode::kGamepad:
+			return g_gamepadFireHeld;
+		case InputMode::kAuto:
+			return g_keyboardMouseFireHeld || g_gamepadFireHeld;
+		default:
+			return false;
+		}
+	}
+
+	void SetFireInputHeld(InputDevice a_device, bool a_held)
+	{
+		switch (a_device) {
+		case InputDevice::kKeyboardMouse:
+			g_keyboardMouseFireHeld = a_held;
+			break;
+		case InputDevice::kGamepad:
+			g_gamepadFireHeld = a_held;
+			break;
+		default:
+			break;
+		}
 	}
 
 	std::string_view InputDeviceName(InputDevice a_device)
@@ -1292,6 +1322,15 @@ namespace
 			return true;
 		}
 
+		// Fallout 4 can switch a continuously-fired weapon from kFireSighted to
+		// kFire, or temporarily expose no useful aim state, while the player is
+		// still aiming. Accept that transition only after the current assist
+		// session has already entered and the fire input is held; this keeps
+		// sustained-fire weapons locked without enabling assist for hip-fire.
+		if (g_zoomHeld && (player->gunState == RE::GUN_STATE::kFire || IsFireInputHeld())) {
+			return true;
+		}
+
 		return false;
 	}
 
@@ -1874,10 +1913,24 @@ namespace
 		g_runtime.manualAimCaptureAfter = now + 0.016F;
 	}
 
-	void RegisterFireActivity(const RE::ButtonEvent* a_event)
+	void RegisterFireActivity(const RE::ButtonEvent* a_event, InputDevice a_device)
 	{
-		if (!a_event || !a_event->QPressed() || !g_zoomHeld ||
-			!IsFeatureEnabled() || !g_config.autoTriggerOnZoom) {
+		if (!a_event) {
+			return;
+		}
+		if (a_event->QReleased()) {
+			SetFireInputHeld(a_device, false);
+			return;
+		}
+		if (!IsFeatureEnabled() || !g_config.autoTriggerOnZoom) {
+			return;
+		}
+		if (!a_event->QPressed()) {
+			return;
+		}
+
+		SetFireInputHeld(a_device, true);
+		if (!g_zoomHeld) {
 			return;
 		}
 		g_runtime.lastAimActivityTime = NowSeconds();
@@ -2712,25 +2765,46 @@ namespace
 		return true;
 	}
 
-	bool TogglePersistentTargetLock(std::monostate)
+	bool TogglePersistentTargetLockForSource(InputDevice a_source)
 	{
 		LoadConfig();
 		if (g_config.aimActivationMode != AimActivationMode::kToggleLock) {
-			Log("Target-lock hotkey ignored: independent mode disabled");
+			Log(std::format(
+				"Target-lock request ignored: independent mode disabled source={}",
+				InputDeviceName(a_source)));
 			return false;
 		}
-		if (g_inputMode == InputMode::kGamepad) {
-			Log("Keyboard/mouse target-lock hotkey ignored in gamepad-only mode");
+		if (!IsInputDeviceAllowedByMode(a_source)) {
+			Log(std::format(
+				"Target-lock request ignored: source={} inputMode={}",
+				InputDeviceName(a_source),
+				InputModeName(g_inputMode)));
 			return false;
 		}
 
 		if (g_toggleLockActive) {
 			g_toggleLockActive = false;
-			Log("Persistent target lock cancelled");
+			Log(std::format(
+				"Persistent target lock cancelled: source={}",
+				InputDeviceName(a_source)));
 			return false;
 		}
 
-		return TryBeginPersistentToggleLock(NowSeconds());
+		const bool acquired = TryBeginPersistentToggleLock(NowSeconds());
+		Log(std::format(
+			"Persistent target-lock toggle processed: source={} acquired={} inputMode={}",
+			InputDeviceName(a_source),
+			acquired,
+			InputModeName(g_inputMode)));
+		return acquired;
+	}
+
+	bool TogglePersistentTargetLock(std::monostate)
+	{
+		// Papyrus/MCM hotkeys are the keyboard/mouse path. The gamepad path calls
+		// TogglePersistentTargetLockForSource directly so gamepad-only mode does
+		// not get rejected by this keyboard-specific entry point.
+		return TogglePersistentTargetLockForSource(InputDevice::kKeyboardMouse);
 	}
 
 	bool IsAssistActive(std::monostate)
@@ -3007,6 +3081,9 @@ namespace
 		g_inputMode = InputMode::kKeyboardMouse;
 		WriteIniValue("InputMode", "iInputMode", "0");
 		WriteMcmValue("Main", "iInputMode", "0");
+		g_toggleLockActive = false;
+		g_gamepadLockButtonHeld = false;
+		g_gamepadLockButtonPressedAt = 0.0F;
 		StopZoomAssist();
 		LoadConfig();
 		Log("Input mode set to keyboard/mouse");
@@ -3019,6 +3096,9 @@ namespace
 		g_inputMode = InputMode::kGamepad;
 		WriteIniValue("InputMode", "iInputMode", "1");
 		WriteMcmValue("Main", "iInputMode", "1");
+		g_toggleLockActive = false;
+		g_gamepadLockButtonHeld = false;
+		g_gamepadLockButtonPressedAt = 0.0F;
 		StopZoomAssist();
 		LoadConfig();
 		Log("Input mode set to gamepad");
@@ -3037,6 +3117,9 @@ namespace
 		const auto modeValue = std::to_string(InputModeToInt(g_inputMode));
 		WriteIniValue("InputMode", "iInputMode", modeValue);
 		WriteMcmValue("Main", "iInputMode", modeValue);
+		g_toggleLockActive = false;
+		g_gamepadLockButtonHeld = false;
+		g_gamepadLockButtonPressedAt = 0.0F;
 		StopZoomAssist();
 		LoadConfig();
 		Log(std::format("Input mode set: {}", InputModeName(g_inputMode)));
@@ -3113,7 +3196,7 @@ namespace
 						std::max(0.0F, NowSeconds() - g_gamepadLockButtonPressedAt) :
 						0.0F;
 					if (duration < kGamepadTargetLockHoldSeconds) {
-						TogglePersistentTargetLock(std::monostate{});
+						TogglePersistentTargetLockForSource(InputDevice::kGamepad);
 						Log(std::format(
 							"Gamepad right-stick short press handled as target lock: duration={}",
 							duration));
@@ -3132,7 +3215,7 @@ namespace
 
 			if (IsFireEvent(a_event) &&
 				IsInputDeviceAllowedByMode(InputDeviceFromRuntime(a_event->device.get()))) {
-				RegisterFireActivity(a_event);
+				RegisterFireActivity(a_event, InputDeviceFromRuntime(a_event->device.get()));
 			}
 		}
 
@@ -3240,7 +3323,17 @@ namespace
 					"Actual game aim state entered");
 				StartZoomAssist(now);
 			} else if (!shouldAssist && g_zoomHeld) {
-				Log("All aim assist requests exited");
+				const auto camera = RE::PlayerCamera::GetSingleton();
+				const auto cameraState = camera && camera->currentState ?
+					static_cast<int>(camera->currentState->id.get()) : -1;
+				Log(std::format(
+					"All aim assist requests exited: actualAimState={} fireInputHeld={} "
+					"gunState={} cameraState={} lastInputDevice={}",
+					actualAimState,
+					IsFireInputHeld(),
+					player ? static_cast<int>(player->gunState) : -1,
+					cameraState,
+					InputDeviceName(g_lastInputDevice)));
 				StopZoomAssist();
 			}
 			UpdateFocusMode(delta);
@@ -3286,6 +3379,8 @@ namespace
 			StopZoomAssist();
 			g_lastInputDevice = InputDevice::kUnknown;
 			g_lastInputDeviceAt = -1.0F;
+			g_keyboardMouseFireHeld = false;
+			g_gamepadFireHeld = false;
 			g_toggleLockActive = false;
 			g_gamepadLockButtonHeld = false;
 			g_gamepadLockButtonPressedAt = 0.0F;

@@ -15,7 +15,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Building SimpleAimAssist 1.2.5...
+echo Building SimpleAimAssist 1.2.8 test package...
 xmake build -P . -r -j2
 if errorlevel 1 (
     echo [ERROR] Build failed.
